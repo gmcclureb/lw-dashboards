@@ -1,0 +1,197 @@
+/* Little Wonders UI refinement — simplified executive view */
+:root{
+  --bg:#f7f8f6;
+  --surface:#ffffff;
+  --surface-2:#fafbf9;
+  --text:#19231d;
+  --muted:#707a73;
+  --muted-2:#98a19b;
+  --line:#e5e9e5;
+  --line-strong:#d9dfda;
+  --brand:#315b49;
+  --brand-2:#779386;
+  --brand-soft:#edf2ef;
+  --shadow:none;
+  --radius:14px;
+  --sidebar:216px;
+  --sidebar-collapsed:68px;
+}
+
+html,body{background:var(--bg)}
+body{letter-spacing:-.006em}
+
+/* App chrome */
+.sidebar{
+  padding:14px 12px;
+  background:#fff;
+  border-right:1px solid var(--line);
+}
+.brand-row{height:44px;margin-bottom:14px;padding:0 5px}
+.brand-mark{width:34px;height:34px;border-radius:10px;font-size:11px}
+.brand-copy strong{font-size:13px}
+.brand-copy span{font-size:10px}
+.nav-list{gap:2px}
+.nav-item{height:38px;border-radius:9px;padding:0 10px;gap:10px}
+.nav-item.active{background:#f2f5f3;box-shadow:none;color:var(--brand)}
+.nav-item:hover{background:#f6f8f6}
+.nav-label{font-size:12px}
+.nav-icon{font-size:13px;width:18px;opacity:.78}
+.data-source-card{background:transparent;border:0;padding:9px 10px;margin-bottom:2px}
+.settings-link{margin-top:0}
+
+.main-content{padding:0 30px 30px}
+.topbar{height:78px;border-bottom:0}
+.page-heading h1{font-size:23px;margin-top:3px;font-weight:600;letter-spacing:-.04em}
+.eyebrow{font-size:8.5px;color:#8a948d;letter-spacing:.12em}
+.topbar-actions{gap:11px}
+.refresh-note{font-size:10px}
+.avatar{display:none}
+.control-bar{height:58px;padding-bottom:4px}
+.segmented{padding:2px;background:#edf0ed;border-radius:9px}
+.segment{height:32px;padding:0 13px;border-radius:7px;font-size:10.5px}
+.select-control{height:34px;border-radius:9px;background:#fff;padding-left:10px}
+.select-control span{font-size:8px}
+.select-control select{font-size:10px}
+#compareControl{display:none!important}
+
+/* Core visual system */
+.panel{
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:none;
+  padding:18px;
+}
+.panel-header h2{font-size:14px;margin-top:4px}
+.panel-kicker{font-size:8.5px;letter-spacing:.11em;color:#819087}
+.panel-note{font-size:9px}
+.dashboard-grid{gap:14px;margin-bottom:14px}
+.dashboard-footer{opacity:.68}
+
+/* CEO dashboard: five numbers only */
+#ceoView .summary-strip{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  overflow:visible;
+  margin-bottom:14px;
+}
+#ceoView .summary-card{
+  padding:15px 16px 14px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+#ceoView .summary-card+.summary-card{border-left:1px solid var(--line)}
+/* Lead-to-enrollment lives in Admissions, not the CEO headline strip. */
+#ceoView .summary-card:nth-child(5){display:none}
+#ceoView .summary-label{font-size:8px;letter-spacing:.08em;color:#7d8780}
+#ceoView .summary-value{font-size:26px;font-weight:600}
+#ceoView .summary-delta{font-size:9px;margin-top:4px}
+#ceoView .summary-sub{font-size:8.5px;margin-top:3px}
+
+/* Forward book stays executive-level and compact. */
+#ceoView .forward-book{padding:15px 18px;margin-bottom:14px}
+#ceoView .forward-head h2{font-size:13px;margin-top:3px}
+#ceoView .forward-head .panel-note{display:none}
+#ceoView .forward-grid{margin-top:12px;grid-template-columns:repeat(4,minmax(0,.72fr)) minmax(255px,1.5fr)}
+#ceoView .forward-cell{padding:12px 14px 1px 0;margin-right:14px}
+#ceoView .forward-cell span,#ceoView .forward-forecast>span{font-size:7.5px}
+#ceoView .forward-cell strong{font-size:18px;margin-top:4px}
+#ceoView .forward-cell small{display:none}
+#ceoView .forward-forecast{padding-top:12px}
+#ceoView .forecast-points{margin-top:6px;gap:10px}
+#ceoView .forecast-points strong{font-size:13px}
+
+/* Primary CEO content: one trend + one concise school scorecard. */
+#ceoView .hero-grid{grid-template-columns:minmax(0,1.55fr) minmax(390px,.92fr)}
+#ceoView .chart-wrap{height:230px;margin-top:7px}
+#ceoView .chart-footer{padding-top:9px;margin-top:0}
+#ceoView .chart-footer>span{font-size:8.5px}
+#ceoView .text-button{font-size:9px}
+#ceoView .school-performance-panel .panel-note{display:none}
+#ceoView .performance-table{margin-top:2px;min-width:0;font-size:10px}
+#ceoView .performance-table th{font-size:8.5px;padding:7px 8px}
+#ceoView .performance-table td{padding:8px}
+/* Keep only the six school-level metrics a CEO should scan here. */
+#ceoView .performance-table tbody tr:nth-child(5),
+#ceoView .performance-table tbody tr:nth-child(6),
+#ceoView .performance-table tbody tr:nth-child(7),
+#ceoView .performance-table tbody tr:nth-child(10){display:none}
+
+/* Detail belongs in its dedicated tabs. */
+#ceoView .secondary-grid{display:none!important}
+#ceoView .classroom-panel{display:none!important}
+#ceoView .bottom-grid{display:block;margin-bottom:12px}
+#ceoView .attention-panel{width:100%}
+#ceoView .attention-panel .panel-note{display:none}
+#ceoView .attention-list{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+#ceoView .attention-item{
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:var(--surface-2);
+  padding:11px;
+  grid-template-columns:26px 1fr;
+  align-items:start;
+}
+#ceoView .attention-item:nth-child(n+4){display:none}
+#ceoView .attention-action{display:none}
+#ceoView .attention-copy strong{font-size:10px;line-height:1.25}
+#ceoView .attention-copy span{font-size:8.5px;line-height:1.35;margin-top:3px}
+#ceoView .attention-icon{width:24px;height:24px;border-radius:7px}
+
+/* Detailed tabs: same cleaner visual language, without reducing information. */
+.module-kpis{background:transparent!important;border:0!important;box-shadow:none!important;gap:10px;overflow:visible!important}
+.module-kpi{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 15px!important}
+.module-kpi+.module-kpi{border-left:1px solid var(--line)!important}
+.module-kpi span{font-size:7.8px!important}
+.module-kpi strong{font-size:22px!important}
+.module-kpi small{font-size:8.5px!important}
+.source-badge{background:#f2f5f3;font-size:7.5px}
+.school-card{box-shadow:none;border-radius:14px}
+.school-card:hover{transform:none;border-color:#cbd4ce}
+.detail-table th{font-size:8px}
+.detail-table td{font-size:9.5px}
+
+@media(max-width:1200px){
+  #ceoView .summary-strip{grid-template-columns:repeat(5,1fr)}
+  #ceoView .hero-grid{grid-template-columns:1fr}
+  #ceoView .school-performance-panel{min-height:0}
+  #ceoView .forward-grid{grid-template-columns:repeat(4,1fr)}
+  #ceoView .forward-forecast{grid-column:1/-1}
+}
+
+@media(max-width:900px){
+  :root{--sidebar:200px}
+  .main-content{padding:0 22px 24px}
+  #ceoView .summary-strip{grid-template-columns:repeat(3,1fr)}
+  #ceoView .summary-card:nth-child(6){grid-column:span 1}
+  #ceoView .attention-list{grid-template-columns:1fr}
+}
+
+@media(max-width:820px){
+  .main-content{padding:0 16px 22px}
+  .topbar{height:68px}
+  .control-bar{height:auto;min-height:58px;gap:8px;flex-wrap:wrap;padding:8px 0}
+  .scope-segmented{width:100%;overflow-x:auto}
+  #ceoView .summary-strip{grid-template-columns:1fr 1fr}
+  #ceoView .summary-card:nth-child(6){grid-column:1/-1}
+  #ceoView .forward-grid{grid-template-columns:1fr 1fr}
+}
+
+@media(max-width:520px){
+  #ceoView .summary-strip{grid-template-columns:1fr 1fr}
+  #ceoView .summary-value{font-size:23px}
+  #ceoView .forward-grid{grid-template-columns:1fr 1fr}
+  #ceoView .forward-cell{border-bottom:0!important}
+  #ceoView .forward-forecast{grid-column:1/-1}
+  .refresh-note{display:none}
+}
