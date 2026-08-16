@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#f7f7f3" />
+  <meta name="description" content="Little Wonders CEO operating dashboard" />
+  <title>Little Wonders | CEO Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-row">
+        <button class="brand-mark" aria-label="Little Wonders home">LW</button>
+        <div class="brand-copy">
+          <strong>Little Wonders</strong>
+          <span>Learning Group</span>
+        </div>
+        <button class="icon-button collapse-button" id="collapseSidebar" aria-label="Collapse navigation">
+          <span>‹</span>
+        </button>
+      </div>
+
+      <nav class="nav-list" aria-label="Main navigation">
+        <button class="nav-item active" data-view="ceo">
+          <span class="nav-icon">▦</span><span class="nav-label">CEO Dashboard</span>
+        </button>
+        <button class="nav-item" data-view="enrollment">
+          <span class="nav-icon">◫</span><span class="nav-label">Enrollment</span><span class="nav-pill">Soon</span>
+        </button>
+        <button class="nav-item" data-view="admissions">
+          <span class="nav-icon">⌁</span><span class="nav-label">Admissions</span><span class="nav-pill">Soon</span>
+        </button>
+        <button class="nav-item" data-view="labor">
+          <span class="nav-icon">◷</span><span class="nav-label">Labor</span><span class="nav-pill">Soon</span>
+        </button>
+        <button class="nav-item" data-view="billing">
+          <span class="nav-icon">$</span><span class="nav-label">Billing</span><span class="nav-pill">Soon</span>
+        </button>
+        <button class="nav-item" data-view="schools">
+          <span class="nav-icon">⌂</span><span class="nav-label">Schools</span><span class="nav-pill">Soon</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="data-source-card">
+        <span class="status-dot"></span>
+        <div class="data-source-copy">
+          <strong>Demo data</strong>
+          <span>Playground-ready</span>
+        </div>
+      </div>
+      <button class="nav-item settings-link" id="openSettings">
+        <span class="nav-icon">⚙</span><span class="nav-label">Data settings</span>
+      </button>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="mobile-menu icon-button" id="mobileMenu" aria-label="Open navigation">☰</button>
+        <div class="page-heading">
+          <div class="eyebrow">OPERATING OVERVIEW</div>
+          <h1>CEO Dashboard</h1>
+        </div>
+        <div class="topbar-actions">
+          <span class="refresh-note">Demo data · refreshed <strong>8:02 AM</strong></span>
+          <button class="avatar" aria-label="User menu">GM</button>
+        </div>
+      </header>
+
+      <section class="control-bar" aria-label="Dashboard filters">
+        <div class="segmented scope-segmented" id="scopeSelector">
+          <button class="segment active" data-scope="total">Little Wonders</button>
+          <button class="segment" data-scope="orono">Orono</button>
+          <button class="segment" data-scope="alpine">Alpine</button>
+        </div>
+        <div class="control-spacer"></div>
+        <label class="select-control">
+          <span>Period</span>
+          <select id="periodSelect">
+            <option value="4w">Last 4 weeks</option>
+            <option value="8w">Last 8 weeks</option>
+            <option value="mtd">Month to date</option>
+          </select>
+        </label>
+        <label class="select-control">
+          <span>Compare</span>
+          <select id="compareSelect">
+            <option value="prior">Prior period</option>
+            <option value="target">Target</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="summary-strip" id="summaryCards" aria-label="Headline metrics"></section>
+
+      <section class="dashboard-grid hero-grid">
+        <article class="panel enrollment-panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-kicker">ENROLLMENT & CAPACITY</div>
+              <h2 id="enrollmentTitle">Enrollment is tracking toward target</h2>
+            </div>
+            <div class="legend">
+              <span><i class="legend-line actual"></i>Actual</span>
+              <span><i class="legend-line forecast"></i>Forecast</span>
+              <span><i class="legend-line capacity"></i>Capacity</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <svg id="enrollmentChart" class="line-chart" role="img" aria-label="Enrollment and capacity chart"></svg>
+          </div>
+          <div class="chart-footer">
+            <span id="enrollmentFootnote">FTE enrollment; forecast includes scheduled starts and known departures.</span>
+            <button class="text-button" data-detail="enrollment">View detail →</button>
+          </div>
+        </article>
+
+        <article class="panel school-performance-panel">
+          <div class="panel-header compact">
+            <div>
+              <div class="panel-kicker">SCHOOL PERFORMANCE</div>
+              <h2>Portfolio at a glance</h2>
+            </div>
+            <span class="panel-note">Click a school to drill down</span>
+          </div>
+          <div class="table-wrap">
+            <table class="performance-table" id="schoolPerformanceTable"></table>
+          </div>
+        </article>
+      </section>
+
+      <section class="dashboard-grid secondary-grid">
+        <article class="panel admissions-panel">
+          <div class="panel-header compact">
+            <div>
+              <div class="panel-kicker">ADMISSIONS</div>
+              <h2>Demand & conversion</h2>
+            </div>
+            <span class="metric-chip" id="admissionsChip">22.9% lead → enrollment</span>
+          </div>
+          <div id="funnel" class="funnel"></div>
+          <div class="mini-trend-row" id="leadSources"></div>
+        </article>
+
+        <article class="panel billing-panel">
+          <div class="panel-header compact">
+            <div>
+              <div class="panel-kicker">BILLING & COLLECTIONS</div>
+              <h2>Revenue realization</h2>
+            </div>
+            <span class="metric-chip good" id="collectionChip">97.4% collected</span>
+          </div>
+          <div class="billing-layout">
+            <div id="billingStats" class="billing-stats"></div>
+            <div class="spark-card">
+              <div class="spark-head"><span>Weekly collections</span><strong id="weeklyCollectionsTotal">$0</strong></div>
+              <svg id="collectionsChart" class="spark-chart" role="img" aria-label="Weekly collections chart"></svg>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel labor-panel">
+          <div class="panel-header compact">
+            <div>
+              <div class="panel-kicker">LABOR EFFICIENCY</div>
+              <h2>Student hours per staff hour</h2>
+            </div>
+            <span class="metric-chip" id="laborChip">5.6x</span>
+          </div>
+          <div id="laborBars" class="labor-bars"></div>
+          <div class="labor-note">Uses student check-in/check-out hours ÷ staff clock-in/clock-out hours.</div>
+        </article>
+      </section>
+
+      <section class="dashboard-grid bottom-grid">
+        <article class="panel attention-panel">
+          <div class="panel-header compact">
+            <div>
+              <div class="panel-kicker">CEO ATTENTION</div>
+              <h2>What needs a look</h2>
+            </div>
+            <span class="panel-note" id="attentionCount">3 items</span>
+          </div>
+          <div id="attentionList" class="attention-list"></div>
+        </article>
+
+        <article class="panel classroom-panel" id="classroomPanel">
+          <div class="panel-header compact">
+            <div>
+              <div class="panel-kicker">CLASSROOM DRILL-DOWN</div>
+              <h2 id="classroomTitle">Capacity by classroom</h2>
+            </div>
+            <span class="panel-note" id="classroomScope">Portfolio</span>
+          </div>
+          <div id="classroomList" class="classroom-list"></div>
+        </article>
+      </section>
+
+      <footer class="dashboard-footer">
+        <span>Little Wonders Learning Group</span>
+        <span>Demo environment · all values are illustrative</span>
+      </footer>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="settings-drawer" id="settingsDrawer" aria-label="Data settings">
+    <div class="drawer-header">
+      <div>
+        <div class="panel-kicker">DATA CONFIGURATION</div>
+        <h2>Playground connection</h2>
+      </div>
+      <button class="icon-button" id="closeSettings" aria-label="Close settings">×</button>
+    </div>
+    <div class="connection-banner">
+      <span class="status-dot"></span>
+      <div><strong>Demo adapter active</strong><span>Read-only architecture is ready for a secure Playground proxy.</span></div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Schools</div>
+      <div class="school-config-row"><span>Orono Montessori School</span><code>ORONO</code></div>
+      <div class="school-config-row"><span>Alpine Montessori</span><code>ALPINE</code></div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Planned data pulls</div>
+      <div id="mappingList" class="mapping-list"></div>
+    </div>
+    <div class="drawer-section security-section">
+      <div class="drawer-section-title">Integration posture</div>
+      <div class="security-row"><span>✓</span><div><strong>Read only</strong><small>No POST, PUT, PATCH or DELETE methods are defined.</small></div></div>
+      <div class="security-row"><span>✓</span><div><strong>API key stays off GitHub Pages</strong><small>Production connection should use a tiny authenticated server-side proxy.</small></div></div>
+      <div class="security-row"><span>✓</span><div><strong>Config-driven mappings</strong><small>Exact Playground field names can be mapped without redesigning dashboard components.</small></div></div>
+    </div>
+  </aside>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="config.js"></script>
+  <script src="demo-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
