@@ -12,9 +12,11 @@
   const fmtNum = (v, d = 0) => Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
   const fmtPct = (v, d = 1) => `${((v || 0) * 100).toFixed(d)}%`;
   const fmtMoney = v => `$${Math.round(v || 0).toLocaleString()}`;
-  const fmtMoneyK = v => {
+  const fmtMoneyK = v => `$${(Number(v || 0) / 1000).toFixed(Math.abs(Number(v || 0)) >= 100000 ? 0 : 1)}k`;
+  const fmtRunRate = v => {
     const n = Number(v || 0);
-    return `$${(n / 1000).toFixed(Math.abs(n) >= 100000 ? 0 : 1)}k`;
+    if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}m`;
+    return `$${Math.round(n / 1000)}k`;
   };
   const svgNS = 'http://www.w3.org/2000/svg';
   let applyingRoute = false;
@@ -24,9 +26,14 @@
   function scope() { return $('#scopeSelector .segment.active')?.dataset.scope || cfg.app.defaultScope || 'total'; }
   function periodLabel() { return demo.periods?.[period()]?.label || period(); }
 
-  function rawRecord(key, p = period()) {
-    return demo.periods?.[p]?.scopes?.[key] || null;
+  function annualizationFactor(p = period()) {
+    if (p === '4w') return 13;
+    if (p === '8w') return 6.5;
+    if (p === 'mtd') return 365.25 / Math.max(1, new Date().getDate());
+    return 13;
   }
+
+  function rawRecord(key, p = period()) { return demo.periods?.[p]?.scopes?.[key] || null; }
 
   function record(key, p = period()) {
     const src = rawRecord(key, p);
@@ -41,6 +48,10 @@
     d.forecast30Fte = Number(d.forecast30Fte ?? d.forecastSeries?.[d.forecastSeries.length - 1] ?? d.fte ?? 0);
     d.forecast60Fte = Number(d.forecast60Fte ?? d.forecast30Fte);
     d.forecast90Fte = Number(d.forecast90Fte ?? d.forecast60Fte);
+    d.grossPayroll = Number(d.grossPayroll || 0);
+    d.tuitionLessPayroll = d.netBilled - d.grossPayroll;
+    d.annualizedTuition = d.netBilled * annualizationFactor(p);
+    d.annualizedTuitionLessPayroll = d.tuitionLessPayroll * annualizationFactor(p);
     d.schoolKey = key;
     return d;
   }
@@ -55,7 +66,7 @@
 
   function aggregate(p = period()) {
     const records = schoolKeys().map(key => record(key, p)).filter(Boolean);
-    const numeric = ['fte', 'capacity', 'netAdds', 'leads', 'tours', 'toursCompleted', 'enrollments', 'charges', 'payments', 'discounts', 'subsidies', 'pastDue', 'studentHours', 'staffHours', 'scheduledStaffHours', 'grossPayroll', 'openSeats', 'scheduledStarts', 'knownDepartures', 'netScheduledAdds', 'forecast30Fte', 'forecast60Fte', 'forecast90Fte', 'netBilled'];
+    const numeric = ['fte', 'capacity', 'netAdds', 'leads', 'tours', 'toursCompleted', 'enrollments', 'charges', 'payments', 'discounts', 'subsidies', 'pastDue', 'studentHours', 'staffHours', 'scheduledStaffHours', 'grossPayroll', 'openSeats', 'scheduledStarts', 'knownDepartures', 'netScheduledAdds', 'forecast30Fte', 'forecast60Fte', 'forecast90Fte', 'netBilled', 'tuitionLessPayroll', 'annualizedTuition', 'annualizedTuitionLessPayroll'];
     const out = {};
     numeric.forEach(k => out[k] = records.reduce((s, d) => s + Number(d[k] || 0), 0));
     out.enrollmentSeries = sumSeries(records.map(d => d.enrollmentSeries));
@@ -65,13 +76,8 @@
     return out;
   }
 
-  function dataFor(s = scope(), p = period()) {
-    return s === 'total' ? aggregate(p) : record(s, p);
-  }
-
-  function targetsFor(s = scope()) {
-    return s === 'total' ? cfg.targets : { ...cfg.targets, ...(schoolCfg(s)?.targets || {}) };
-  }
+  function dataFor(s = scope(), p = period()) { return s === 'total' ? aggregate(p) : record(s, p); }
+  function targetsFor(s = scope()) { return s === 'total' ? cfg.targets : { ...cfg.targets, ...(schoolCfg(s)?.targets || {}) }; }
 
   function metrics(d) {
     return {
@@ -81,6 +87,7 @@
       forecast90: safeDiv(d.forecast90Fte, d.capacity),
       collection: safeDiv(d.payments, d.netBilled),
       payrollPct: safeDiv(d.grossPayroll, d.netBilled),
+      tuitionLessPayrollMargin: safeDiv(d.tuitionLessPayroll, d.netBilled),
       pastDuePct: safeDiv(d.pastDue, d.netBilled),
       conversion: safeDiv(d.enrollments, d.leads)
     };
@@ -126,7 +133,7 @@
   function issuesFor(s = scope()) {
     const keys = s === 'total' ? schoolKeys() : [s];
     const issues = [];
-    const add = (issue) => issues.push(issue);
+    const add = issue => issues.push(issue);
 
     keys.forEach(key => {
       const d = record(key);
@@ -138,104 +145,37 @@
 
       if (m.payrollPct > t.grossPayrollPctNetBilled) {
         const over = m.payrollPct - t.grossPayrollPctNetBilled;
-        add({
-          score: 115 + over * 100,
-          level: over > 0.06 ? 'risk' : 'watch',
-          title: `${prefix}payroll above target`,
-          detail: `${fmtPct(m.payrollPct)} of net tuition billed vs ${fmtPct(t.grossPayrollPctNetBilled)} target`,
-          readout: `${school} gross payroll is the primary watch item at ${fmtPct(m.payrollPct)} of net billed`,
-          scope: key,
-          view: 'labor'
-        });
+        add({ score: 115 + over * 100, level: over > 0.06 ? 'risk' : 'watch', title: `${prefix}payroll above target`, detail: `${fmtPct(m.payrollPct)} of net tuition vs ${fmtPct(t.grossPayrollPctNetBilled)} target`, readout: `${school} payroll is the primary watch item at ${fmtPct(m.payrollPct)} of net tuition`, scope: key, view: 'labor' });
       }
 
       if (m.occupancy < t.occupancy) {
         const gap = t.occupancy - m.occupancy;
-        add({
-          score: 108 + gap * 100,
-          level: gap > 0.04 ? 'risk' : 'watch',
-          title: `${prefix}occupancy below target`,
-          detail: `${fmtPct(m.occupancy)} current vs ${fmtPct(t.occupancy)} target`,
-          readout: `${school} occupancy is the primary watch item at ${fmtPct(m.occupancy)} versus a ${fmtPct(t.occupancy)} target`,
-          scope: key,
-          view: 'enrollment'
-        });
+        add({ score: 108 + gap * 100, level: gap > 0.04 ? 'risk' : 'watch', title: `${prefix}occupancy below target`, detail: `${fmtPct(m.occupancy)} current vs ${fmtPct(t.occupancy)} target`, readout: `${school} occupancy is below target at ${fmtPct(m.occupancy)}`, scope: key, view: 'enrollment' });
       }
 
       if (m.collection < t.collectionRate) {
         const gap = t.collectionRate - m.collection;
-        add({
-          score: 101 + gap * 100,
-          level: gap > 0.03 ? 'risk' : 'watch',
-          title: `${prefix}collections below target`,
-          detail: `${fmtPct(m.collection)} collection rate vs ${fmtPct(t.collectionRate)} target`,
-          readout: `${school} collections are the primary watch item at ${fmtPct(m.collection)}`,
-          scope: key,
-          view: 'billing'
-        });
+        add({ score: 101 + gap * 100, level: gap > 0.03 ? 'risk' : 'watch', title: `${prefix}collections below target`, detail: `${fmtPct(m.collection)} collection rate vs ${fmtPct(t.collectionRate)} target`, readout: `${school} collections are below target at ${fmtPct(m.collection)}`, scope: key, view: 'billing' });
       }
 
       if (m.forecast30 < t.forecastOccupancy30) {
         const gap = t.forecastOccupancy30 - m.forecast30;
-        add({
-          score: 94 + gap * 100,
-          level: gap > 0.04 ? 'risk' : 'watch',
-          title: `${prefix}30-day forecast below target`,
-          detail: `${fmtPct(m.forecast30)} projected occupancy vs ${fmtPct(t.forecastOccupancy30)} target`,
-          readout: `${school} 30-day occupancy is projected at ${fmtPct(m.forecast30)}, below target`,
-          scope: key,
-          view: 'enrollment'
-        });
+        add({ score: 94 + gap * 100, level: gap > 0.04 ? 'risk' : 'watch', title: `${prefix}30-day booked occupancy below target`, detail: `${fmtPct(m.forecast30)} projected vs ${fmtPct(t.forecastOccupancy30)} target`, readout: `${school} 30-day booked occupancy is ${fmtPct(m.forecast30)}`, scope: key, view: 'enrollment' });
       }
 
       if (m.pastDuePct > t.pastDuePctNetBilled) {
         const over = m.pastDuePct - t.pastDuePctNetBilled;
-        add({
-          score: 88 + over * 100,
-          level: over > 0.04 ? 'risk' : 'watch',
-          title: `${prefix}past-due balance elevated`,
-          detail: `${fmtPct(m.pastDuePct)} of net tuition billed is past due`,
-          readout: `${school} past-due balances are elevated at ${fmtPct(m.pastDuePct)} of net billed`,
-          scope: key,
-          view: 'billing'
-        });
+        add({ score: 88 + over * 100, level: over > 0.04 ? 'risk' : 'watch', title: `${prefix}past-due balance elevated`, detail: `${fmtPct(m.pastDuePct)} of net tuition billed is past due`, readout: `${school} past-due balances are elevated`, scope: key, view: 'billing' });
       }
 
       if (m.conversion < t.leadToEnrollment) {
-        add({
-          score: 78 + (t.leadToEnrollment - m.conversion) * 100,
-          level: 'watch',
-          title: `${prefix}lead conversion below target`,
-          detail: `${fmtPct(m.conversion)} lead-to-enrollment vs ${fmtPct(t.leadToEnrollment)} target`,
-          readout: `${school} lead conversion is below target at ${fmtPct(m.conversion)}`,
-          scope: key,
-          view: 'admissions'
-        });
+        add({ score: 78 + (t.leadToEnrollment - m.conversion) * 100, level: 'watch', title: `${prefix}lead conversion below target`, detail: `${fmtPct(m.conversion)} lead-to-enrollment vs ${fmtPct(t.leadToEnrollment)} target`, readout: `${school} lead conversion is below target at ${fmtPct(m.conversion)}`, scope: key, view: 'admissions' });
       }
 
       (d.classrooms || []).forEach(c => {
         const occ = safeDiv(c.fte, c.capacity);
-        if (occ >= 0.97) {
-          add({
-            score: 82 + (occ - 0.97) * 100,
-            level: 'risk',
-            title: `${prefix}${c.name} effectively full`,
-            detail: `${fmtPct(occ, 0)} FTE occupancy with ${c.futureStarts || 0} scheduled start${c.futureStarts === 1 ? '' : 's'}`,
-            readout: `${school} ${c.name} is effectively full at ${fmtPct(occ, 0)}`,
-            scope: key,
-            view: 'enrollment'
-          });
-        } else if (occ >= 0.93) {
-          add({
-            score: 70 + (occ - 0.93) * 100,
-            level: 'watch',
-            title: `${prefix}${c.name} nearing capacity`,
-            detail: `${fmtPct(occ, 0)} FTE occupancy`,
-            readout: `${school} ${c.name} is nearing capacity at ${fmtPct(occ, 0)}`,
-            scope: key,
-            view: 'enrollment'
-          });
-        }
+        if (occ >= 0.97) add({ score: 82 + (occ - 0.97) * 100, level: 'risk', title: `${prefix}${c.name} effectively full`, detail: `${fmtPct(occ, 0)} FTE occupancy with ${c.futureStarts || 0} scheduled start${c.futureStarts === 1 ? '' : 's'}`, readout: `${school} ${c.name} is effectively full`, scope: key, view: 'enrollment' });
+        else if (occ >= 0.93) add({ score: 70 + (occ - 0.93) * 100, level: 'watch', title: `${prefix}${c.name} nearing capacity`, detail: `${fmtPct(occ, 0)} FTE occupancy`, readout: `${school} ${c.name} is nearing capacity`, scope: key, view: 'enrollment' });
       });
     });
 
@@ -247,23 +187,21 @@
     const label = selected === 'total' ? 'Portfolio' : schoolCfg(selected)?.shortName || selected;
     const issue = issuesFor(selected)[0];
     const first = `${label} occupancy is <strong>${fmtPct(m.occupancy)}</strong>; booked enrollment lifts it to <strong>${fmtPct(m.forecast30)}</strong> within 30 days.`;
-    const second = issue ? `${issue.readout}.` : 'No material operating exceptions are above threshold.';
-    container.insertAdjacentHTML('beforeend', `<section class="exec-readout"><div class="exec-kicker">EXECUTIVE READOUT</div><h2>${first} ${second}</h2></section>`);
+    const economics = `Annualized net tuition is <strong>${fmtRunRate(d.annualizedTuition)}</strong>, with <strong>${fmtPct(m.tuitionLessPayrollMargin)}</strong> remaining after gross payroll.`;
+    const watch = issue ? ` ${issue.readout}.` : ' No material operating exceptions are above threshold.';
+    container.insertAdjacentHTML('beforeend', `<section class="exec-readout"><div class="exec-kicker">EXECUTIVE READOUT</div><h2>${first} ${economics}${watch}</h2></section>`);
   }
 
   function renderKpis(container, d, m, t) {
-    const startFte = d.enrollmentSeries?.[0] ?? d.fte;
-    const startOcc = safeDiv(startFte, d.capacity);
-    const occCtx = { text: `${fmtNum(d.fte)} / ${fmtNum(d.capacity)} FTE · ${signedPts(m.occupancy - startOcc)} vs start`, cls: status(m.occupancy, t.occupancy) };
-    const fcCtx = { text: `${signedPts(m.forecast30 - m.occupancy)} vs today`, cls: status(m.forecast30, t.forecastOccupancy30) };
-    const collCtx = targetContext(m.collection, t.collectionRate);
     const payrollCtx = targetContext(m.payrollPct, t.grossPayrollPctNetBilled, true);
+    const tlpTarget = Math.max(0, 1 - t.grossPayrollPctNetBilled);
+    const tlpCtx = targetContext(m.tuitionLessPayrollMargin, tlpTarget);
     const cards = [
-      ['Occupancy', fmtPct(m.occupancy), occCtx.text, occCtx.cls],
-      ['30D Forecast', fmtPct(m.forecast30), fcCtx.text, fcCtx.cls],
-      ['Net Tuition Billed', fmtMoneyK(d.netBilled), `${periodLabel()} · ${fmtMoneyK(d.discounts)} discounts`, ''],
-      ['Collection Rate', fmtPct(m.collection), collCtx.text, collCtx.cls],
-      ['Payroll / Net Billed', fmtPct(m.payrollPct), payrollCtx.text, payrollCtx.cls]
+      ['Occupancy', fmtPct(m.occupancy), `${fmtNum(d.fte)} / ${fmtNum(d.capacity)} FTE · ${d.netAdds >= 0 ? '+' : '−'}${fmtNum(Math.abs(d.netAdds))} net adds`, status(m.occupancy, t.occupancy)],
+      ['30D Booked Occupancy', fmtPct(m.forecast30), `${fmtNum(d.forecast30Fte)} projected FTE · ${signedPts(m.forecast30 - m.occupancy)} vs today`, status(m.forecast30, t.forecastOccupancy30)],
+      ['Tuition Run Rate', fmtRunRate(d.annualizedTuition), `Annualized from ${fmtMoneyK(d.netBilled)} net billed · ${periodLabel()}`, ''],
+      ['Payroll / Net Tuition', fmtPct(m.payrollPct), payrollCtx.text, payrollCtx.cls],
+      ['Tuition Less Payroll', fmtRunRate(d.annualizedTuitionLessPayroll), `Annualized · ${fmtPct(m.tuitionLessPayrollMargin)} after gross payroll`, tlpCtx.cls]
     ];
     container.insertAdjacentHTML('beforeend', `<section class="exec-kpis">${cards.map(c => `<div class="exec-kpi"><span class="exec-kpi-label">${c[0]}</span><strong class="exec-kpi-value">${c[1]}</strong><span class="exec-kpi-context ${c[3]}">${c[2]}</span></div>`).join('')}</section>`);
   }
@@ -274,21 +212,17 @@
     return el;
   }
 
-  function path(points) {
-    return points.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
-  }
+  function path(points) { return points.map((p, i) => `${i ? 'L' : 'M'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' '); }
 
   function renderOccupancyChart(svg, d, t) {
     if (!svg) return;
     svg.innerHTML = '';
     const W = 780, H = 270, pad = { l: 42, r: 54, t: 20, b: 31 };
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-
     const actual = (d.enrollmentSeries?.length ? d.enrollmentSeries : [d.fte]).map(v => safeDiv(v, d.capacity));
     let forecast = (d.forecastSeries?.length ? d.forecastSeries : [d.fte, d.forecast30Fte]).map(v => safeDiv(v, d.capacity));
     if (!forecast.length || Math.abs(forecast[0] - actual[actual.length - 1]) > 0.0001) forecast = [actual[actual.length - 1], ...forecast];
     else forecast[0] = actual[actual.length - 1];
-
     const all = [...actual, ...forecast, t.occupancy];
     const minV = Math.max(0, Math.min(...all) - 0.045);
     const maxV = Math.min(1.05, Math.max(...all) + 0.04);
@@ -302,8 +236,7 @@
     defs.append(grad); svg.append(defs);
 
     for (let i = 0; i < 3; i++) {
-      const v = minV + (maxV - minV) * (i / 2);
-      const yy = y(v);
+      const v = minV + (maxV - minV) * (i / 2), yy = y(v);
       svg.append(makeSvg('line', { x1: pad.l, y1: yy, x2: W - pad.r, y2: yy, class: 'exec-grid-line' }));
       const txt = makeSvg('text', { x: pad.l - 9, y: yy + 3, 'text-anchor': 'end', class: 'exec-axis' }); txt.textContent = fmtPct(v, 0); svg.append(txt);
     }
@@ -312,75 +245,67 @@
     svg.append(makeSvg('line', { x1: pad.l, y1: targetY, x2: W - pad.r, y2: targetY, class: 'exec-target' }));
     const targetLabel = makeSvg('text', { x: W - pad.r + 7, y: targetY + 3, class: 'exec-target-label' }); targetLabel.textContent = `${fmtPct(t.occupancy, 0)} target`; svg.append(targetLabel);
 
-    const actualPts = actual.map((v, i) => [x(i), y(v)]);
-    const forecastPts = forecast.map((v, i) => [x(actual.length - 1 + i), y(v)]);
+    const actualPts = actual.map((v, i) => [x(i), y(v)]), forecastPts = forecast.map((v, i) => [x(actual.length - 1 + i), y(v)]);
     svg.append(makeSvg('path', { d: `${path(actualPts)} L ${actualPts[actualPts.length - 1][0]} ${H - pad.b} L ${actualPts[0][0]} ${H - pad.b} Z`, class: 'exec-area' }));
     svg.append(makeSvg('path', { d: path(actualPts), class: 'exec-actual' }));
     svg.append(makeSvg('path', { d: path(forecastPts), class: 'exec-forecast' }));
 
-    const nowX = x(actual.length - 1);
+    const nowX = x(actual.length - 1), endX = x(totalPoints - 1), endY = y(forecast[forecast.length - 1]);
     svg.append(makeSvg('line', { x1: nowX, y1: pad.t, x2: nowX, y2: H - pad.b, class: 'exec-now-line' }));
     svg.append(makeSvg('circle', { cx: nowX, cy: y(actual[actual.length - 1]), r: 4.3, class: 'exec-dot' }));
-    const endX = x(totalPoints - 1), endY = y(forecast[forecast.length - 1]);
     svg.append(makeSvg('circle', { cx: endX, cy: endY, r: 4.3, class: 'exec-dot forecast' }));
-
     const nowVal = makeSvg('text', { x: nowX, y: y(actual[actual.length - 1]) - 11, 'text-anchor': 'middle', class: 'exec-value-label' }); nowVal.textContent = fmtPct(actual[actual.length - 1]); svg.append(nowVal);
     const endVal = makeSvg('text', { x: endX, y: endY - 11, 'text-anchor': 'end', class: 'exec-value-label' }); endVal.textContent = fmtPct(forecast[forecast.length - 1]); svg.append(endVal);
-
     [[0, 'Period start', 'start'], [actual.length - 1, 'Today', 'middle'], [totalPoints - 1, '+30 days', 'end']].forEach(([idx, label, anchor]) => {
       const txt = makeSvg('text', { x: x(idx), y: H - 8, 'text-anchor': anchor, class: 'exec-axis' }); txt.textContent = label; svg.append(txt);
     });
   }
 
-  function scoreCell(value, target, formatter, inverse = false) {
+  function percentScoreCell(value, target, inverse = false) {
     const cls = status(value, target, inverse);
     const delta = value - target;
     const variance = `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta * 100).toFixed(1)} pts`;
-    return `<td><span class="exec-score-value"><i class="exec-status ${cls}"></i>${formatter(value)}</span><span class="exec-variance ${cls === 'good' ? '' : cls}">${variance}</span></td>`;
+    return `<td><span class="exec-score-value"><i class="exec-status ${cls}"></i>${fmtPct(value)}</span><span class="exec-variance ${cls === 'good' ? '' : cls}">${variance}</span></td>`;
+  }
+
+  function moneyScoreCell(value, subtext = '') {
+    return `<td><span class="exec-score-value">${fmtRunRate(value)}</span>${subtext ? `<span class="exec-variance">${subtext}</span>` : ''}</td>`;
   }
 
   function schoolGapScore(key) {
     const d = record(key), m = metrics(d), t = targetsFor(key);
     if (!d) return 0;
-    return Math.max(0, t.occupancy - m.occupancy) * 100 + Math.max(0, t.forecastOccupancy30 - m.forecast30) * 80 + Math.max(0, t.collectionRate - m.collection) * 70 + Math.max(0, m.payrollPct - t.grossPayrollPctNetBilled) * 90;
+    return Math.max(0, t.occupancy - m.occupancy) * 100 + Math.max(0, t.forecastOccupancy30 - m.forecast30) * 80 + Math.max(0, m.payrollPct - t.grossPayrollPctNetBilled) * 90;
   }
 
   function scorecardTitle() {
-    const keys = schoolKeys();
-    const ranked = keys.map(k => [k, schoolGapScore(k)]).sort((a, b) => b[1] - a[1]);
+    const ranked = schoolKeys().map(k => [k, schoolGapScore(k)]).sort((a, b) => b[1] - a[1]);
     if (!ranked.length || ranked[0][1] <= 0.01) return 'Both schools are at or above core operating targets';
     const weak = schoolCfg(ranked[0][0])?.shortName || ranked[0][0];
     return `${weak} carries the largest gap to operating targets`;
   }
 
   function renderCore(container, d, m, t) {
-    const forecastTitle = m.forecast30 >= t.occupancy
-      ? `Booked starts lift occupancy above the ${fmtPct(t.occupancy, 0)} target`
-      : `Booked starts improve occupancy, but the 30-day outlook remains below target`;
+    const forecastTitle = m.forecast30 >= t.occupancy ? `Booked starts lift occupancy above the ${fmtPct(t.occupancy, 0)} target` : 'Booked starts improve occupancy, but the 30-day outlook remains below target';
     const selected = scope();
     const columns = ['total', ...schoolKeys()];
     const records = Object.fromEntries(columns.map(key => [key, dataFor(key)]));
-
-    const scoreRows = [
-      ['Occupancy', x => metrics(x).occupancy, 'occupancy', false],
-      ['30D forecast', x => metrics(x).forecast30, 'forecastOccupancy30', false],
-      ['Collections', x => metrics(x).collection, 'collectionRate', false],
-      ['Payroll / billed', x => metrics(x).payrollPct, 'grossPayrollPctNetBilled', true]
-    ];
-
     const heads = columns.map(key => {
       const label = key === 'total' ? 'Total' : schoolCfg(key)?.shortName || key;
       return `<th class="scope-head ${selected === key ? 'selected' : ''}" data-exec-scope="${key}">${label}</th>`;
     }).join('');
 
-    const rows = scoreRows.map(row => {
-      const cells = columns.map(key => {
-        const x = records[key];
-        const tt = targetsFor(key);
-        return scoreCell(row[1](x), tt[row[2]], v => fmtPct(v), row[3]);
-      }).join('');
-      return `<tr><td>${row[0]}</td>${cells}</tr>`;
-    }).join('');
+    const scoreRows = [
+      ['Occupancy', key => percentScoreCell(metrics(records[key]).occupancy, targetsFor(key).occupancy)],
+      ['30D booked', key => percentScoreCell(metrics(records[key]).forecast30, targetsFor(key).forecastOccupancy30)],
+      ['Tuition run rate', key => moneyScoreCell(records[key].annualizedTuition, `${fmtMoneyK(records[key].netBilled)} in period`)],
+      ['Payroll / tuition', key => percentScoreCell(metrics(records[key]).payrollPct, targetsFor(key).grossPayrollPctNetBilled, true)],
+      ['Tuition less payroll', key => {
+        const mm = metrics(records[key]);
+        return moneyScoreCell(records[key].annualizedTuitionLessPayroll, `${fmtPct(mm.tuitionLessPayrollMargin)} margin`);
+      }]
+    ];
+    const rows = scoreRows.map(row => `<tr><td>${row[0]}</td>${columns.map(row[1]).join('')}</tr>`).join('');
 
     container.insertAdjacentHTML('beforeend', `
       <section class="exec-core">
@@ -400,19 +325,18 @@
         <div class="exec-scorecard">
           <div class="exec-section-kicker">SCHOOL PERFORMANCE</div>
           <h3 class="exec-section-title">${scorecardTitle()}</h3>
-          <div class="exec-section-meta">Consolidated result first; dots indicate performance vs target.</div>
+          <div class="exec-section-meta">Consolidated result first; operating targets shown where applicable.</div>
           <table class="exec-score-table"><thead><tr><th>Metric</th>${heads}</tr></thead><tbody>${rows}</tbody></table>
         </div>
       </section>`);
-
     renderOccupancyChart($('#execOccupancyChart'), d, t);
   }
 
   function renderAttention(container) {
     const issues = issuesFor(scope()).slice(0, 3);
     const title = issues.length ? `${issues.length} item${issues.length === 1 ? '' : 's'} warrant attention` : 'No material exceptions';
-    const rows = issues.length ? issues.map(issue => `<button class="exec-attention-row" data-exec-view="${issue.view}" data-exec-issue-scope="${issue.scope}"><i class="exec-status ${issue.level}"></i><span class="exec-attention-title">${issue.title}</span><span class="exec-attention-detail">${issue.detail}</span><span class="exec-attention-arrow">→</span></button>`).join('') : `<div class="exec-no-attention">All core metrics are currently within configured operating thresholds.</div>`;
-    container.insertAdjacentHTML('beforeend', `<section class="exec-attention"><div class="exec-attention-head"><div><div class="exec-section-kicker">NEEDS ATTENTION</div><h3 class="exec-section-title">${title}</h3><p>Ranked by operating significance; select an item to open the relevant school and module.</p></div></div><div class="exec-attention-list">${rows}</div></section>`);
+    const rows = issues.length ? issues.map(issue => `<button class="exec-attention-row" data-exec-view="${issue.view}" data-exec-issue-scope="${issue.scope}"><i class="exec-status ${issue.level}"></i><span class="exec-attention-title">${issue.title}</span><span class="exec-attention-detail">${issue.detail}</span><span class="exec-attention-arrow">→</span></button>`).join('') : '<div class="exec-no-attention">All core metrics are currently within configured operating thresholds.</div>';
+    container.insertAdjacentHTML('beforeend', `<section class="exec-attention"><div class="exec-attention-head"><div><div class="exec-section-kicker">NEEDS ATTENTION</div><h3 class="exec-section-title">${title}</h3><p>Collections, admissions and other diagnostics surface here only when they cross a configured threshold.</p></div></div><div class="exec-attention-list">${rows}</div></section>`);
   }
 
   function renderExecutive() {
@@ -421,11 +345,9 @@
     const active = !ceo.hidden;
     document.body.classList.toggle('ceo-active', active);
     if (!active) return;
-
     const container = ensureContainer();
-    if (!container) return;
     const d = dataFor();
-    if (!d) return;
+    if (!container || !d) return;
     const m = metrics(d), t = targetsFor();
     container.innerHTML = '';
     renderReadout(container, d, m);
@@ -451,16 +373,14 @@
 
   function replaceIcons() {
     const map = { ceo: 'overview', enrollment: 'enrollment', admissions: 'admissions', labor: 'labor', billing: 'billing', schools: 'portfolio' };
-    $$('.nav-item[data-view]').forEach(item => {
-      const i = $('.nav-icon', item); if (i) i.innerHTML = icon(map[item.dataset.view]);
-    });
+    $$('.nav-item[data-view]').forEach(item => { const i = $('.nav-icon', item); if (i) i.innerHTML = icon(map[item.dataset.view]); });
     const settings = $('#openSettings .nav-icon'); if (settings) settings.innerHTML = icon('settings');
   }
 
   function applyChrome() {
     const navOverview = $('.nav-item[data-view="ceo"] .nav-label'); if (navOverview) navOverview.textContent = 'Overview';
     const navPortfolio = $('.nav-item[data-view="schools"] .nav-label'); if (navPortfolio) navPortfolio.textContent = 'Portfolio';
-    const refresh = $('.refresh-note'); if (refresh) refresh.innerHTML = `Demo · updated <strong>8:02 AM</strong>`;
+    const refresh = $('.refresh-note'); if (refresh) refresh.innerHTML = 'Demo · updated <strong>8:02 AM</strong>';
     const footerSpans = $$('.dashboard-footer span'); if (footerSpans[1]) footerSpans[1].textContent = 'Demo environment · illustrative operating data';
     if (!$('#ceoView')?.hidden) {
       const eyebrow = $('#pageEyebrow'); if (eyebrow) eyebrow.textContent = 'LITTLE WONDERS';
@@ -472,21 +392,15 @@
     const btn = $(`#scopeSelector .segment[data-scope="${targetScope}"]`);
     if (btn && !btn.classList.contains('active')) btn.click();
   }
-
   function clickView(view) {
     const btn = $(`.nav-item[data-view="${view}"]`);
     if (btn && !btn.classList.contains('active')) btn.click();
   }
-
   function routeTo(view, targetScope = scope()) {
     internalNav = true;
     clickScope(targetScope);
     clickView(view);
-    queueMicrotask(() => {
-      internalNav = false;
-      syncHash(false);
-      renderExecutive();
-    });
+    queueMicrotask(() => { internalNav = false; syncHash(false); renderExecutive(); });
   }
 
   function bindExecutiveActions(container) {
@@ -500,7 +414,6 @@
     const pathView = activeView === 'ceo' ? 'overview' : activeView === 'schools' ? 'portfolio' : activeView;
     return { view: pathView, school: scope(), period: period() };
   }
-
   function syncHash(replace = false) {
     if (applyingRoute || internalNav) return;
     const r = routeState();
@@ -508,20 +421,14 @@
     if (location.hash === next) return;
     if (replace) history.replaceState(null, '', next); else history.pushState(null, '', next);
   }
-
   function parseHash() {
     const hash = location.hash.replace(/^#\/?/, '');
     if (!hash) return null;
     const [pathPart, queryPart = ''] = hash.split('?');
     const params = new URLSearchParams(queryPart);
     const viewMap = { overview: 'ceo', portfolio: 'schools', ceo: 'ceo' };
-    return {
-      view: viewMap[pathPart] || pathPart || 'ceo',
-      school: params.get('school') || 'total',
-      period: params.get('period') || cfg.app.defaultPeriod || '4w'
-    };
+    return { view: viewMap[pathPart] || pathPart || 'ceo', school: params.get('school') || 'total', period: params.get('period') || cfg.app.defaultPeriod || '4w' };
   }
-
   function applyHashRoute() {
     const r = parseHash();
     if (!r) return;
@@ -533,11 +440,7 @@
     }
     clickScope(r.school === 'total' || schoolCfg(r.school) ? r.school : 'total');
     if ($(`.nav-item[data-view="${r.view}"]`)) clickView(r.view); else clickView('ceo');
-    queueMicrotask(() => {
-      applyingRoute = false;
-      renderExecutive();
-      applyChrome();
-    });
+    queueMicrotask(() => { applyingRoute = false; renderExecutive(); applyChrome(); });
   }
 
   function setupListeners() {
@@ -558,12 +461,7 @@
   applyChrome();
   ensureContainer();
   setupListeners();
-
   if (location.hash) applyHashRoute();
-  else {
-    renderExecutive();
-    syncHash(true);
-  }
-
+  else { renderExecutive(); syncHash(true); }
   window.LW_EXECUTIVE = { render: renderExecutive, routeTo };
 })();
