@@ -5,7 +5,8 @@ window.LW_CONFIG = {
     defaultScope: 'total',
     defaultPeriod: '4w',
     demoMode: true,
-    readOnly: true
+    readOnly: true,
+    dataPolicy: 'playground-only'
   },
   schools: {
     orono: {
@@ -13,21 +14,26 @@ window.LW_CONFIG = {
       name: 'Orono Montessori School',
       shortName: 'Orono',
       city: 'Orono, MN',
-      effectiveCapacity: 69
+      effectiveCapacity: 69,
+      targets: { occupancy: 0.90, leadToEnrollment: 0.22, collectionRate: 0.97, grossPayrollPctNetBilled: 0.50, staffLeverage: 5.5 }
     },
     alpine: {
       id: 'ALPINE',
       name: 'Alpine Montessori',
       shortName: 'Alpine',
       city: 'Minnesota',
-      effectiveCapacity: 89
+      effectiveCapacity: 89,
+      targets: { occupancy: 0.90, leadToEnrollment: 0.22, collectionRate: 0.97, grossPayrollPctNetBilled: 0.50, staffLeverage: 5.5 }
     }
   },
   targets: {
     occupancy: 0.90,
+    forecastOccupancy30: 0.92,
     leadToEnrollment: 0.22,
     collectionRate: 0.97,
-    staffLeverage: 5.5
+    grossPayrollPctNetBilled: 0.50,
+    staffLeverage: 5.5,
+    pastDuePctNetBilled: 0.07
   },
   playground: {
     mode: 'demo',
@@ -39,74 +45,69 @@ window.LW_CONFIG = {
     },
     pullCatalog: [
       {
-        key: 'crm.leads',
-        label: 'CRM leads',
-        domain: 'Admissions',
+        key: 'crm.leads', label: 'CRM leads & stages', domain: 'Admissions',
         playgroundConcepts: ['Leads', 'stage', 'Assigned Site', 'Guardians', 'Students'],
-        status: 'publicly documented'
+        status: 'public API documented'
       },
       {
-        key: 'crm.bookings',
-        label: 'Tour & meeting bookings',
-        domain: 'Admissions',
+        key: 'crm.bookings', label: 'Tour & meeting bookings', domain: 'Admissions',
         playgroundConcepts: ['bookings', 'meetings', 'saved views'],
-        status: 'publicly described'
-      },
-      {
-        key: 'enrollment.rosters',
-        label: 'Student rosters',
-        domain: 'Enrollment',
-        playgroundConcepts: ['rosters', 'students', 'programs', 'classrooms'],
         status: 'API surface described'
       },
       {
-        key: 'enrollment.capacity',
-        label: 'Capacity & FTE enrollment',
-        domain: 'Enrollment',
-        playgroundConcepts: ['capacity', 'FTE enrollment', 'programs', 'classrooms'],
-        status: 'API/reporting surface described'
+        key: 'enrollment.rosters', label: 'Students, rosters & classrooms', domain: 'Enrollment',
+        playgroundConcepts: ['students', 'guardians', 'rosters', 'programs', 'classrooms'],
+        status: 'API surface described'
       },
       {
-        key: 'attendance.students',
-        label: 'Student attendance',
-        domain: 'Labor',
+        key: 'enrollment.capacity', label: 'Capacity & FTE enrollment', domain: 'Enrollment',
+        playgroundConcepts: ['capacity', 'FTE enrollment', 'programs', 'classrooms', 'future openings'],
+        status: 'reporting/API surface described'
+      },
+      {
+        key: 'enrollment.forecast', label: 'Future enrollment / openings', domain: 'Enrollment',
+        playgroundConcepts: ['scheduled starts', 'known departures', 'predictive enrollment', 'future openings'],
+        status: 'Playground-native; map exact API fields'
+      },
+      {
+        key: 'attendance.students', label: 'Student attendance', domain: 'Operations',
         playgroundConcepts: ['student check-in', 'student check-out', 'timestamp', 'site'],
-        status: 'publicly documented'
+        status: 'public API documented'
       },
       {
-        key: 'attendance.staff',
-        label: 'Staff attendance',
-        domain: 'Labor',
-        playgroundConcepts: ['staff clock-in', 'staff clock-out', 'timestamp', 'site'],
-        status: 'publicly documented'
+        key: 'attendance.staff', label: 'Staff attendance & schedules', domain: 'Operations',
+        playgroundConcepts: ['staff clock-in', 'staff clock-out', 'breaks', 'scheduled hours', 'PTO'],
+        status: 'Playground-native; attendance API documented'
       },
       {
-        key: 'billing.charges',
-        label: 'Charges',
-        domain: 'Billing',
+        key: 'payroll.summary', label: 'Payroll runs & gross pay', domain: 'Payroll',
+        playgroundConcepts: ['payroll runs', 'gross pay', 'taxes', 'deductions', 'pay date'],
+        status: 'Playground-native; custom API endpoint if needed'
+      },
+      {
+        key: 'billing.charges', label: 'Charges', domain: 'Billing',
         playgroundConcepts: ['charges', 'accounting metadata'],
         status: 'API surface described'
       },
       {
-        key: 'billing.payments',
-        label: 'Payments',
-        domain: 'Billing',
+        key: 'billing.payments', label: 'Payments', domain: 'Billing',
         playgroundConcepts: ['payments', 'payouts', 'payment type'],
         status: 'API surface described'
       },
       {
-        key: 'billing.discounts',
-        label: 'Discounts',
-        domain: 'Billing',
+        key: 'billing.discounts', label: 'Discounts', domain: 'Billing',
         playgroundConcepts: ['discounts'],
         status: 'API surface described'
       },
       {
-        key: 'billing.subsidies',
-        label: 'Subsidies',
-        domain: 'Billing',
+        key: 'billing.subsidies', label: 'Subsidies', domain: 'Billing',
         playgroundConcepts: ['subsidy data', 'agency payer', 'reconciliation'],
         status: 'API surface described'
+      },
+      {
+        key: 'billing.aging', label: 'Past-due balances / aging', domain: 'Billing',
+        playgroundConcepts: ['overdue balances', 'family balances', 'aging'],
+        status: 'Playground-native; custom API endpoint if needed'
       }
     ],
     fieldMappings: {
@@ -119,14 +120,21 @@ window.LW_CONFIG = {
       studentBirthday: 'studentBirthday',
       fteEnrollment: null,
       capacity: null,
+      scheduledStart: null,
+      knownDeparture: null,
       studentCheckIn: null,
       studentCheckOut: null,
       staffClockIn: null,
       staffClockOut: null,
+      scheduledHours: null,
+      payrollGrossPay: null,
+      payrollTaxes: null,
+      payrollDeductions: null,
       charges: null,
       payments: null,
       discounts: null,
-      subsidies: null
+      subsidies: null,
+      overdueBalance: null
     }
   }
 };
