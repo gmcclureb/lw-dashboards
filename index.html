@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="ceo-clean.css" />
+  <link rel="stylesheet" href="ceo-executive.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -25,12 +26,12 @@
       </div>
 
       <nav class="nav-list" aria-label="Main navigation">
-        <button class="nav-item active" data-view="ceo"><span class="nav-icon">▦</span><span class="nav-label">CEO Dashboard</span></button>
+        <button class="nav-item active" data-view="ceo"><span class="nav-icon">▦</span><span class="nav-label">Overview</span></button>
         <button class="nav-item" data-view="enrollment"><span class="nav-icon">◫</span><span class="nav-label">Enrollment</span></button>
         <button class="nav-item" data-view="admissions"><span class="nav-icon">⌁</span><span class="nav-label">Admissions</span></button>
         <button class="nav-item" data-view="labor"><span class="nav-icon">◷</span><span class="nav-label">Labor</span></button>
         <button class="nav-item" data-view="billing"><span class="nav-icon">$</span><span class="nav-label">Billing</span></button>
-        <button class="nav-item" data-view="schools"><span class="nav-icon">⌂</span><span class="nav-label">Schools</span></button>
+        <button class="nav-item" data-view="schools"><span class="nav-icon">⌂</span><span class="nav-label">Portfolio</span></button>
       </nav>
 
       <div class="sidebar-spacer"></div>
@@ -45,11 +46,11 @@
       <header class="topbar">
         <button class="mobile-menu icon-button" id="mobileMenu" aria-label="Open navigation">☰</button>
         <div class="page-heading">
-          <div class="eyebrow" id="pageEyebrow">OPERATING OVERVIEW</div>
-          <h1 id="pageTitle">CEO Dashboard</h1>
+          <div class="eyebrow" id="pageEyebrow">LITTLE WONDERS</div>
+          <h1 id="pageTitle">Overview</h1>
         </div>
         <div class="topbar-actions">
-          <span class="refresh-note">Demo data · Playground-only model · refreshed <strong>8:02 AM</strong></span>
+          <span class="refresh-note">Demo · updated <strong>8:02 AM</strong></span>
           <button class="avatar" aria-label="User menu">GM</button>
         </div>
       </header>
@@ -124,7 +125,7 @@
 
       <section id="moduleView" class="module-view" hidden></section>
 
-      <footer class="dashboard-footer"><span>Little Wonders Learning Group</span><span>Demo environment · all values are illustrative · Playground-only data model</span></footer>
+      <footer class="dashboard-footer"><span>Little Wonders Learning Group</span><span>Demo environment · illustrative operating data</span></footer>
     </main>
   </div>
 
@@ -146,5 +147,6 @@
   <script src="config.js"></script>
   <script src="demo-data.js"></script>
   <script src="app.js"></script>
+  <script src="ceo-executive.js"></script>
 </body>
 </html>
