@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#f7f7f3" />
+  <meta name="theme-color" content="#f7f8f6" />
   <meta name="description" content="Little Wonders operating dashboard" />
   <title>Little Wonders | Operating Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="ceo-clean.css" />
 </head>
 <body>
   <div class="app-shell">
@@ -83,11 +84,11 @@
               <div class="legend"><span><i class="legend-line actual"></i>Actual</span><span><i class="legend-line forecast"></i>Forecast</span><span><i class="legend-line capacity"></i>Capacity</span></div>
             </div>
             <div class="chart-wrap"><svg id="enrollmentChart" class="line-chart" role="img" aria-label="Enrollment and capacity chart"></svg></div>
-            <div class="chart-footer"><span id="enrollmentFootnote">FTE enrollment; forecast includes scheduled starts and known departures.</span><button class="text-button" data-detail="enrollment">View detail →</button></div>
+            <div class="chart-footer"><span id="enrollmentFootnote">FTE enrollment; forecast includes scheduled starts and known departures.</span><button class="text-button" data-detail="enrollment">View enrollment →</button></div>
           </article>
 
           <article class="panel school-performance-panel">
-            <div class="panel-header compact"><div><div class="panel-kicker">SCHOOL PERFORMANCE</div><h2>Portfolio at a glance</h2></div><span class="panel-note">Click a school to drill down</span></div>
+            <div class="panel-header compact"><div><div class="panel-kicker">SCHOOL SCORECARD</div><h2>Orono, Alpine and total</h2></div><span class="panel-note">Click a school to drill down</span></div>
             <div class="table-wrap"><table class="performance-table" id="schoolPerformanceTable"></table></div>
           </article>
         </section>
@@ -111,7 +112,7 @@
 
         <section class="dashboard-grid bottom-grid">
           <article class="panel attention-panel">
-            <div class="panel-header compact"><div><div class="panel-kicker">CEO ATTENTION</div><h2>What needs a look</h2></div><span class="panel-note" id="attentionCount">0 items</span></div>
+            <div class="panel-header compact"><div><div class="panel-kicker">CEO ATTENTION</div><h2>What needs attention</h2></div><span class="panel-note" id="attentionCount">0 items</span></div>
             <div id="attentionList" class="attention-list"></div>
           </article>
           <article class="panel classroom-panel" id="classroomPanel">
